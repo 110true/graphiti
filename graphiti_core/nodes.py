@@ -48,6 +48,12 @@ from graphiti_core.utils.datetime_utils import utc_now
 logger = logging.getLogger(__name__)
 
 
+# --- Brian, 2024-07-09 ---
+# Added 'chat' episode type to support storage of conversational chat messages as episodes.
+# This type is used for storing user/assistant chat history in the knowledge graph, enabling
+# context-aware entity extraction and chat history display, without triggering entity extraction
+# or other processing. Part of the unified conversational interface redesign.
+# -------------------------
 class EpisodeType(Enum):
     """
     Enumeration of different types of episodes that can be processed.
@@ -71,6 +77,7 @@ class EpisodeType(Enum):
     message = 'message'
     json = 'json'
     text = 'text'
+    chat = 'chat'
 
     @staticmethod
     def from_str(episode_type: str):
@@ -80,6 +87,8 @@ class EpisodeType(Enum):
             return EpisodeType.json
         if episode_type == 'text':
             return EpisodeType.text
+        if episode_type == 'chat':
+            return EpisodeType.chat
         logger.error(f'Episode type: {episode_type} not implemented')
         raise NotImplementedError
 

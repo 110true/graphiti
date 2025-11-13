@@ -36,6 +36,8 @@ USE_PARALLEL_RUNTIME = bool(os.getenv('USE_PARALLEL_RUNTIME', False))
 SEMAPHORE_LIMIT = int(os.getenv('SEMAPHORE_LIMIT', 20))
 MAX_REFLEXION_ITERATIONS = int(os.getenv('MAX_REFLEXION_ITERATIONS', 0))
 DEFAULT_PAGE_LIMIT = 20
+EPISODE_WINDOW_LEN = int(os.getenv('EPISODE_WINDOW_LEN', 3))
+CONTEXT_EPISODE_TYPE = os.getenv('CONTEXT_EPISODE_TYPE', None)
 
 
 def parse_db_date(input_date: neo4j_time.DateTime | str | None) -> datetime | None:

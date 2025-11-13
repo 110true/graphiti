@@ -20,13 +20,12 @@ from datetime import datetime
 from typing_extensions import LiteralString
 
 from graphiti_core.driver.driver import GraphDriver, GraphProvider
+from graphiti_core.helpers import EPISODE_WINDOW_LEN
 from graphiti_core.models.nodes.node_db_queries import (
     EPISODIC_NODE_RETURN,
     EPISODIC_NODE_RETURN_NEPTUNE,
 )
 from graphiti_core.nodes import EpisodeType, EpisodicNode, get_episodic_node_from_record
-
-EPISODE_WINDOW_LEN = 3
 
 logger = logging.getLogger(__name__)
 

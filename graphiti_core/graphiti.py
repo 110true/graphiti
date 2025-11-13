@@ -37,6 +37,8 @@ from graphiti_core.edges import (
 from graphiti_core.embedder import EmbedderClient, OpenAIEmbedder
 from graphiti_core.graphiti_types import GraphitiClients
 from graphiti_core.helpers import (
+    CONTEXT_EPISODE_TYPE,
+    EPISODE_WINDOW_LEN,
     get_default_group_id,
     semaphore_gather,
     validate_excluded_entity_types,
@@ -59,10 +61,7 @@ from graphiti_core.search.search_config_recipes import (
     EDGE_HYBRID_SEARCH_RRF,
 )
 from graphiti_core.search.search_filters import SearchFilters
-from graphiti_core.search.search_utils import (
-    RELEVANT_SCHEMA_LIMIT,
-    get_mentioned_nodes,
-)
+from graphiti_core.search.search_utils import get_mentioned_nodes
 from graphiti_core.telemetry import capture_event
 from graphiti_core.tracer import Tracer, create_tracer
 from graphiti_core.utils.bulk_utils import (
@@ -86,10 +85,7 @@ from graphiti_core.utils.maintenance.edge_operations import (
     resolve_extracted_edge,
     resolve_extracted_edges,
 )
-from graphiti_core.utils.maintenance.graph_data_operations import (
-    EPISODE_WINDOW_LEN,
-    retrieve_episodes,
-)
+from graphiti_core.utils.maintenance.graph_data_operations import retrieve_episodes
 from graphiti_core.utils.maintenance.node_operations import (
     extract_attributes_from_nodes,
     extract_nodes,
@@ -686,6 +682,10 @@ class Graphiti:
         start = time()
         now = utc_now()
 
+        logger.debug(
+            f'Starting add_episode: {episode_body[:50]}..., group_id: {group_id}'
+        )
+
         validate_entity_types(entity_types)
         validate_excluded_entity_types(excluded_entity_types, entity_types)
 
@@ -702,17 +702,28 @@ class Graphiti:
 
         with self.tracer.start_span('add_episode') as span:
             try:
-                # Retrieve previous episodes for context
-                previous_episodes = (
-                    await self.retrieve_episodes(
-                        reference_time,
-                        last_n=RELEVANT_SCHEMA_LIMIT,
-                        group_ids=[group_id],
-                        source=source,
+                # --- Brian, 2024-07-09 ---
+                # Context episode type for previous episode retrieval is now configurable via the CONTEXT_EPISODE_TYPE environment variable.
+                # If set, this will override the default behavior and use the specified type (e.g., 'chat') for context.
+                # If not set, the system will use the incoming episode's source type (legacy behavior).
+                # -------------------------
+                context_episode_type = CONTEXT_EPISODE_TYPE
+                if previous_episode_uuids is None:
+                    logger.debug("Retrieving previous episodes by reference_time and group_id.")
+                    prev_source = EpisodeType.from_str(context_episode_type) if context_episode_type else source
+                    previous_episodes = (
+                        await self.retrieve_episodes(
+                            reference_time,
+                            last_n=EPISODE_WINDOW_LEN,
+                            group_ids=[group_id],
+                            source=prev_source,
+                        )
                     )
-                    if previous_episode_uuids is None
-                    else await EpisodicNode.get_by_uuids(self.driver, previous_episode_uuids)
-                )
+                    logger.debug(f"Retrieved {len(previous_episodes)} previous episodes.")
+                else:
+                    logger.debug(f"Retrieving previous episodes by UUIDs: {previous_episode_uuids}")
+                    previous_episodes = await EpisodicNode.get_by_uuids(self.driver, previous_episode_uuids)
+                    logger.debug(f"Retrieved {len(previous_episodes)} previous episodes by UUID.")
 
                 # Get or create episode
                 episode = (
@@ -729,6 +740,32 @@ class Graphiti:
                         valid_at=reference_time,
                     )
                 )
+
+                # --- Brian, 2024-07-09 ---
+                # If the episode type is 'chat', only store the episode in the database without any entity extraction,
+                # edge extraction, or other processing. This ensures chat messages are available for context/history
+                # but do not affect the knowledge graph structure. Part of the unified conversational interface redesign.
+                # -------------------------
+                if source == EpisodeType.chat:
+                    span.add_attributes(
+                        {
+                            'episode.uuid': episode.uuid,
+                            'episode.source': source.value,
+                            'episode.reference_time': reference_time.isoformat(),
+                            'group_id': group_id,
+                            'previous_episodes.count': len(previous_episodes),
+                        }
+                    )
+                    _, stored_episode = await self._process_episode_data(episode, [], [], now)
+                    logger.info(f"Stored chat episode (no processing): '{stored_episode.content[:50]}...'")
+                    return AddEpisodeResults(
+                        episode=stored_episode,
+                        episodic_edges=[],
+                        nodes=[],
+                        edges=[],
+                        communities=[],
+                        community_edges=[],
+                    )
 
                 # Create default edge type map
                 edge_type_map_default = (
@@ -807,7 +844,7 @@ class Graphiti:
                     }
                 )
 
-                logger.info(f'Completed add_episode in {(end - start) * 1000} ms')
+                logger.info(f"Completed add_episode for episode content: '{episode.content[:50]}...' in {(end - start) * 1000} ms")
 
                 return AddEpisodeResults(
                     episode=episode,
