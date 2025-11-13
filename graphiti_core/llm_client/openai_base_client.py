@@ -33,8 +33,8 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_MODEL = 'gpt-4.1'
 DEFAULT_SMALL_MODEL = 'gpt-4o'
-DEFAULT_REASONING = 'minimal'
-DEFAULT_VERBOSITY = 'low'
+DEFAULT_REASONING = None
+DEFAULT_VERBOSITY = None
 
 
 class BaseOpenAIClient(LLMClient):
