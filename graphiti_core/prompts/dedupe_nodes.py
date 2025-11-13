@@ -86,6 +86,9 @@ def node(context: dict[str, Any]) -> list[Message]:
         Entities should only be considered duplicates if they refer to the *same real-world object or concept*.
         Semantic Equivalence: if a descriptive label in existing_entities clearly refers to a named entity in context, treat them as duplicates.
 
+        IMPORTANT: Only resolve the entities provided in the ENTITIES list. 
+        Do NOT extract or add new entities from the message context.
+
         Do NOT mark entities as duplicates if:
         - They are related but distinct.
         - They have similar names or purposes but refer to separate instances or concepts.

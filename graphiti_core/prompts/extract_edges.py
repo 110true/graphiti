@@ -112,6 +112,18 @@ You may use information from the PREVIOUS MESSAGES only to disambiguate referenc
 
 {context['custom_prompt']}
 
+# ACTIVITY ENTITY CONNECTION RULES
+
+When extracting edges involving Activity entities, ensure activities are connected to ALL their relevant people and objects:
+- Activities MUST connect to the person performing them (usually the speaker/message author)
+- Activities MUST connect to every person explicitly mentioned in the activity description
+  * "call Sarah" → activity connects to Sarah
+  * "text John about property" → activity connects to John
+  * "meet with Bob and Alice" → activity connects to Bob AND Alice
+- Activities MUST connect to properties, locations, or objects mentioned in the activity context
+- Use RELATES_TO as the relationship type for ALL activity connections
+- Prioritize extracting Activity-to-Person and Activity-to-Property relationships — these are critical connections
+
 # EXTRACTION RULES
 
 1. **Entity ID Validation**: `source_entity_id` and `target_entity_id` must use only the `id` values from the ENTITIES list provided above.
