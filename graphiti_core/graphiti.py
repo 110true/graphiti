@@ -414,10 +414,12 @@ class Graphiti:
     ) -> tuple[list[EpisodicEdge], EpisodicNode]:
         """Process and save episode data to the graph."""
         episodic_edges = build_episodic_edges(nodes, episode.uuid, now)
+        logger.debug(f"Built {len(episodic_edges)} episodic_edges.")
         episode.entity_edges = [edge.uuid for edge in entity_edges]
 
         if not self.store_raw_episode_content:
             episode.content = ''
+            logger.debug("Raw episode content not stored.")
 
         await add_nodes_and_edges_bulk(
             self.driver,
@@ -427,6 +429,7 @@ class Graphiti:
             entity_edges,
             self.embedder,
         )
+        logger.debug("Database write complete.")
 
         return episodic_edges, episode
 
@@ -726,10 +729,13 @@ class Graphiti:
                     logger.debug(f"Retrieved {len(previous_episodes)} previous episodes by UUID.")
 
                 # Get or create episode
-                episode = (
-                    await EpisodicNode.get_by_uuid(self.driver, uuid)
-                    if uuid is not None
-                    else EpisodicNode(
+                if uuid is not None:
+                    logger.debug(f"Retrieving existing episode by uuid: {uuid}")
+                    episode = await EpisodicNode.get_by_uuid(self.driver, uuid)
+                    logger.debug(f"Loaded episode: {episode}")
+                else:
+                    logger.debug("Creating new EpisodicNode instance.")
+                    episode = EpisodicNode(
                         name=name,
                         group_id=group_id,
                         labels=[],
@@ -739,7 +745,7 @@ class Graphiti:
                         created_at=now,
                         valid_at=reference_time,
                     )
-                )
+                    logger.debug(f"Created new episode: {episode}")
 
                 # --- Brian, 2024-07-09 ---
                 # If the episode type is 'chat', only store the episode in the database without any entity extraction,
@@ -775,10 +781,13 @@ class Graphiti:
                 )
 
                 # Extract and resolve nodes
+                logger.debug("Extracting nodes from episode.")
                 extracted_nodes = await extract_nodes(
                     self.clients, episode, previous_episodes, entity_types, excluded_entity_types
                 )
+                logger.debug(f"Extracted {len(extracted_nodes)} nodes.")
 
+                logger.debug("Extracting and resolving nodes and edges.")
                 nodes, uuid_map, _ = await resolve_extracted_nodes(
                     self.clients,
                     extracted_nodes,
@@ -786,8 +795,10 @@ class Graphiti:
                     previous_episodes,
                     entity_types,
                 )
+                logger.debug(f"Resolved {len(nodes)} nodes.")
 
                 # Extract and resolve edges in parallel with attribute extraction
+                logger.debug("Resolving extracted edges and hydrating nodes.")
                 resolved_edges, invalidated_edges = await self._extract_and_resolve_edges(
                     episode,
                     extracted_nodes,
@@ -803,10 +814,13 @@ class Graphiti:
                 hydrated_nodes = await extract_attributes_from_nodes(
                     self.clients, nodes, episode, previous_episodes, entity_types
                 )
+                logger.debug(f"Resolved {len(resolved_edges)} edges, {len(invalidated_edges)} invalidated edges, hydrated {len(hydrated_nodes)} nodes.")
 
                 entity_edges = resolved_edges + invalidated_edges
+                logger.debug(f"Total entity_edges: {len(entity_edges)}")
 
                 # Process and save episode data
+                logger.debug("Writing nodes and edges to database (add_nodes_and_edges_bulk).")
                 episodic_edges, episode = await self._process_episode_data(
                     episode, hydrated_nodes, entity_edges, now
                 )
@@ -815,6 +829,7 @@ class Graphiti:
                 communities = []
                 community_edges = []
                 if update_communities:
+                    logger.debug("Updating communities for nodes.")
                     communities, community_edges = await semaphore_gather(
                         *[
                             update_community(self.driver, self.llm_client, self.embedder, node)
@@ -822,6 +837,7 @@ class Graphiti:
                         ],
                         max_coroutines=self.max_coroutines,
                     )
+                    logger.debug("Communities updated.")
 
                 end = time()
 
@@ -856,6 +872,7 @@ class Graphiti:
                 )
 
             except Exception as e:
+                logger.exception(f"Exception in add_episode: {e}")
                 span.set_status('error', str(e))
                 span.record_exception(e)
                 raise e
