@@ -187,21 +187,23 @@ def get_entity_node_save_bulk_query(
         case GraphProvider.FALKORDB:
             queries = []
             for node in nodes:
+                label_statements = ''
                 for label in node['labels']:
-                    queries.append(
-                        (
-                            f"""
+                    label_statements += f' SET n:{label}\n'
+                queries.append(
+                    (
+                        f"""
                             UNWIND $nodes AS node
                             MERGE (n:Entity {{uuid: node.uuid}})
-                            SET n:{label}
+                            {label_statements}
                             SET n = node
                             WITH n, node
                             SET n.name_embedding = vecf32(node.name_embedding)
                             RETURN n.uuid AS uuid
                             """,
-                            {'nodes': [node]},
-                        )
+                        {'nodes': [node]},
                     )
+                )
             return queries
         case GraphProvider.NEPTUNE:
             queries = []
