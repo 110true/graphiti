@@ -17,7 +17,8 @@ limitations under the License.
 summary_instructions = """Guidelines:
         1. Output only factual content. Never explain what you're doing, why, or mention limitations/constraints. 
         2. Only use the provided messages, entity, and entity context to set attribute values.
-        3. Keep the summary concise and to the point. STATE FACTS DIRECTLY IN UNDER 250 CHARACTERS.
+        3. Keep the summary concise and to the point. STATE FACTS DIRECTLY IN UNDER 400 CHARACTERS.
+        4. PRESERVE EXACT TERMINOLOGY: Retain domain-specific terms, classifications, role titles, system names, issue types, and technical vocabulary exactly as stated in the source. Do not replace specific terms with generic alternatives (e.g., keep "bug vs feature vs infrastructure classification" — do not generalize to "technical classification").
 
         Example summaries:
         BAD: "This is the only activity in the context. The user listened to this song. No other details were provided to include in this summary."
@@ -26,4 +27,6 @@ summary_instructions = """Guidelines:
         GOOD: "User attended Q3 planning meeting with sales team on March 15."
         BAD: "The context shows John ordered pizza. Due to length constraints, other details are omitted from this summary."
         GOOD: "John ordered pepperoni pizza from Mario's at 7:30 PM, delivered to office."
+        BAD: "Sarah handles technical classification for the engineering team."
+        GOOD: "Sarah is the authority on bug vs feature vs infrastructure classification. She makes final calls on test failure categorization."
         """

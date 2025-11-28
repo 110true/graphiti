@@ -26,7 +26,7 @@ from .snippets import summary_instructions
 class Summary(BaseModel):
     summary: str = Field(
         ...,
-        description='Summary containing the important information about the entity. Under 250 characters',
+        description='Summary containing the important information about the entity. Under 400 characters',
     )
 
 
@@ -57,7 +57,9 @@ def summarize_pair(context: dict[str, Any]) -> list[Message]:
             content=f"""
         Synthesize the information from the following two summaries into a single succinct summary.
 
-        IMPORTANT: Keep the summary concise and to the point. SUMMARIES MUST BE LESS THAN 250 CHARACTERS.
+        IMPORTANT: 
+        - SUMMARIES MUST BE LESS THAN 400 CHARACTERS.
+        - PRESERVE domain-specific vocabulary from BOTH summaries. Retain specialized terms, role titles, classifications, system names, and technical vocabulary exactly as stated. Do not drop or generalize these terms when merging.
 
         Summaries:
         {to_prompt_json(context['node_summaries'])}
@@ -115,7 +117,7 @@ def summary_description(context: dict[str, Any]) -> list[Message]:
             role='user',
             content=f"""
         Create a short one sentence description of the summary that explains what kind of information is summarized.
-        Summaries must be under 250 characters.
+        Summaries must be under 400 characters.
 
         Summary:
         {to_prompt_json(context['summary'])}

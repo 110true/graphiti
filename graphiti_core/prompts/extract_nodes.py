@@ -293,7 +293,8 @@ def extract_attributes(context: dict[str, Any]) -> list[Message]:
         Guidelines:
         1. Do not hallucinate entity property values if they cannot be found in the current context.
         2. Only use the provided MESSAGES and ENTITY to set attribute values.
-        3. The summary attribute represents a summary of the ENTITY, and should be updated with new information about the Entity from the MESSAGES. Only summarize information specific to this one ENTITY, not all Entities detected in the MESSAGES. Summaries must be no longer than 250 words.
+        3. The summary attribute represents a summary of the ENTITY, and should be updated with new information about the Entity from the MESSAGES. Only summarize information specific to this one ENTITY, not all Entities detected in the MESSAGES. Summaries must be no longer than 400 characters.
+        4. PRESERVE domain-specific vocabulary: Retain exact role titles, classification categories, technical terms, system names, issue types, and specialized phrases from the source text. These terms are essential for search retrieval. Do not generalize specific terminology.
         
         Example:
         If the ENTITY is "John's dog" and the MESSAGES only mention "John went to the park," then all attributes for an Entity "John's dog" should be None or empty.
